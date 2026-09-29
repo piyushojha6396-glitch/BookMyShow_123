@@ -84,7 +84,7 @@
                     <div class="card-body">
                         <h3>🏛️ ${t.name}</h3>
                         <p>📍 ${t.address || 'N/A'}</p>
-                        <p>🌆 ${t.city?.name || ''}, ${t.city?.state || ''}</p>
+                        <p>🌆 ${t.cityName || ''}</p>
                     </div>
                     <div class="card-footer">
                         <button class="btn btn-sm btn-outline" onclick="viewScreens(${t.id}, '${t.name}')">View Screens</button>

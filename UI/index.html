@@ -100,7 +100,7 @@
             (m) => `
                 <a href="pages/movie-detail.html?id=${m.id}" class="card">
                     <div class="card-img" style="display:flex;align-items:center;justify-content:center;font-size:4rem;background:linear-gradient(135deg, #1a1a2e, #16213e);">
-                        <img src="${m.posterUrl || "assets/default-movie.png"}" alt="${m.title}" style="max-width:100%; max-height:100%; border-radius:4px;" />
+                        ${m.posterUrl ? `<img src="${escapeHtml(m.posterUrl)}" alt="${escapeHtml(m.title)}" />` : `<span aria-hidden="true">🎬</span>`}
                     </div>
                     <div class="card-body">
                         <h3>${m.title}</h3>
@@ -132,7 +132,7 @@
         }
         const filtered = allMovies.filter(
           (m) =>
-            m.title.toLowerCase().includes(q) ||
+            (m.title || "").toLowerCase().includes(q) ||
             (m.genre && m.genre.toLowerCase().includes(q)) ||
             (m.language && m.language.toLowerCase().includes(q)),
         );

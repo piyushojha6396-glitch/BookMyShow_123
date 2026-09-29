@@ -51,7 +51,7 @@
             try {
                 const user = await UserAPI.login(data);
                 setLoggedInUser(user);
-                showToast(`Welcome back, ${user.name}!`, 'success');
+                showToast(`Welcome back, ${user.user?.name || user.name}!`, 'success');
                 setTimeout(() => window.location.href = '../index.html', 1000);
             } catch (err) {
                 showToast(err.message, 'error');

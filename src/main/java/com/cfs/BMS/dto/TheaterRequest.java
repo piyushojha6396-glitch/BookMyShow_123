@@ -1,17 +1,11 @@
 package com.cfs.BMS.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class TheaterRequest {
-
-    private String name;
-    private String address;
-    private Long cityId;
+public record TheaterRequest(
+        @NotBlank @Size(max = 150) String name,
+        @Size(max = 300) String address,
+        @NotNull Long cityId) {
 }

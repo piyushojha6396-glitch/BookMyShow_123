@@ -1,117 +1,120 @@
-// ===== API BASE URL =====
-const API = 'http://localhost:8080/api';
+// Keep the UI deployable from any static host while allowing a local API override.
+const API = window.BMS_API_URL || "http://localhost:8080/api";
 
-// ===== GENERIC FETCH HELPERS =====
-async function apiGet(endpoint) {
-    const res = await fetch(`${API}${endpoint}`);
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: res.statusText }));
-        throw new Error(err.message || 'Request failed');
-    }
-    return res.json();
+function getAccessToken() {
+    return localStorage.getItem("bms_token");
 }
 
-async function apiPost(endpoint, data) {
-    const res = await fetch(`${API}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: res.statusText }));
-        throw new Error(err.message || 'Request failed');
-    }
-    return res.json();
+function unwrapPage(payload) {
+    return Array.isArray(payload) ? payload : (payload?.content || []);
 }
 
-async function apiPut(endpoint, data) {
-    const res = await fetch(`${API}${endpoint}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: data ? JSON.stringify(data) : undefined
-    });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: res.statusText }));
-        throw new Error(err.message || 'Request failed');
+async function request(endpoint, options = {}) {
+    const headers = { Accept: "application/json", ...(options.headers || {}) };
+    const token = getAccessToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    if (options.body) headers["Content-Type"] = "application/json";
+
+    let response;
+    try {
+        response = await fetch(`${API}${endpoint}`, { ...options, headers });
+    } catch {
+        throw new Error("The service is unavailable. Please check that the server is running.");
     }
-    return res.json();
+
+    const text = await response.text();
+    let payload = null;
+    try { payload = text ? JSON.parse(text) : null; } catch { payload = text; }
+    if (!response.ok) {
+        if (response.status === 401) {
+            localStorage.removeItem("bms_token");
+            localStorage.removeItem("bms_user");
+        }
+        const fieldErrors = payload?.errors
+            ?.map((error) => `${error.field}: ${error.message}`)
+            .join(", ");
+        const message = fieldErrors || payload?.message || payload?.error
+            || (typeof payload === "string" ? payload : response.statusText);
+        throw new Error(message || "Request failed");
+    }
+    return payload;
 }
 
-async function apiDelete(endpoint) {
-    const res = await fetch(`${API}${endpoint}`, { method: 'DELETE' });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: res.statusText }));
-        throw new Error(err.message || 'Request failed');
-    }
-    // might return text
-    const text = await res.text();
-    try { return JSON.parse(text); } catch { return text; }
-}
+const apiGet = (endpoint) => request(endpoint);
+const apiPost = (endpoint, data) => request(endpoint, { method: "POST", body: JSON.stringify(data) });
+const apiPut = (endpoint, data) => request(endpoint, { method: "PUT", ...(data ? { body: JSON.stringify(data) } : {}) });
+const apiPatch = (endpoint, data) => request(endpoint, { method: "PATCH", ...(data ? { body: JSON.stringify(data) } : {}) });
+const apiDelete = (endpoint) => request(endpoint, { method: "DELETE" });
 
-// ===== USER APIs =====
 const UserAPI = {
-    register: (data) => apiPost('/users/register', data),
-    login: (data) => apiPost('/users/login', data),
-    getAll: () => apiGet('/users'),
-    getById: (id) => apiGet(`/users/${id}`)
+    register: async (data) => {
+        const response = await apiPost("/auth/register", data);
+        return response;
+    },
+    login: async (data) => {
+        const response = await apiPost("/auth/login", data);
+        return response;
+    },
+    getAll: async () => unwrapPage(await apiGet("/users")),
+    getById: (id) => apiGet(`/users/${id}`),
+    me: () => apiGet("/users/me")
 };
 
-// ===== CITY APIs =====
 const CityAPI = {
-    add: (data) => apiPost('/cities', data),
-    getAll: () => apiGet('/cities'),
+    add: (data) => apiPost("/cities", data),
+    getAll: () => apiGet("/cities"),
     getById: (id) => apiGet(`/cities/${id}`)
 };
 
-// ===== MOVIE APIs =====
 const MovieAPI = {
-    add: (data) => apiPost('/movies', data),
-    getAll: () => apiGet('/movies'),
+    add: (data) => apiPost("/movies", data),
+    getAll: async () => unwrapPage(await apiGet("/movies?size=100")),
     getById: (id) => apiGet(`/movies/${id}`),
     search: (title) => apiGet(`/movies/search?title=${encodeURIComponent(title)}`),
-    getByGenre: (genre) => apiGet(`/movies/genre/${genre}`),
-    getByLanguage: (lang) => apiGet(`/movies/language/${lang}`),
+    getByGenre: (genre) => apiGet(`/movies/genre/${encodeURIComponent(genre)}`),
+    getByLanguage: (lang) => apiGet(`/movies/language/${encodeURIComponent(lang)}`),
     update: (id, data) => apiPut(`/movies/${id}`, data),
     delete: (id) => apiDelete(`/movies/${id}`)
 };
 
-// ===== THEATER APIs =====
 const TheaterAPI = {
-    add: (data) => apiPost('/theaters', data),
-    getAll: () => apiGet('/theaters'),
+    add: (data) => apiPost("/theaters", data),
+    getAll: async () => unwrapPage(await apiGet("/theaters?size=100")),
     getById: (id) => apiGet(`/theaters/${id}`),
     getByCity: (cityId) => apiGet(`/theaters/city/${cityId}`)
 };
 
-// ===== SCREEN APIs =====
 const ScreenAPI = {
-    add: (data) => apiPost('/screens', data),
-    getAll: () => apiGet('/screens'),
+    add: (data) => apiPost("/screens", data),
+    getAll: async () => unwrapPage(await apiGet("/screens?size=100")),
     getById: (id) => apiGet(`/screens/${id}`),
     getByTheater: (theaterId) => apiGet(`/screens/theater/${theaterId}`)
 };
 
-// ===== SEAT APIs =====
 const SeatAPI = {
-    add: (data) => apiPost('/seats', data),
+    add: (data) => apiPost("/seats", data),
     getByScreen: (screenId) => apiGet(`/seats/screen/${screenId}`),
     getById: (id) => apiGet(`/seats/${id}`)
 };
 
-// ===== SHOW APIs =====
 const ShowAPI = {
-    add: (data) => apiPost('/shows', data),
-    getAll: () => apiGet('/shows'),
+    add: (data) => apiPost("/shows", data),
+    getAll: async () => unwrapPage(await apiGet("/shows?size=100")),
     getById: (id) => apiGet(`/shows/${id}`),
-    getByMovie: (movieId) => apiGet(`/shows/movie/${movieId}`),
-    getByMovieAndDate: (movieId, date) => apiGet(`/shows/movie/${movieId}/date?date=${date}`)
+    getByMovie: (movieId, date, cityId) => {
+        const params = new URLSearchParams();
+        if (date) params.set("date", date);
+        if (cityId) params.set("cityId", cityId);
+        const query = params.toString();
+        return apiGet(`/shows/movie/${movieId}${query ? `?${query}` : ""}`);
+    },
+    getByMovieAndDate: (movieId, date) => apiGet(`/shows/movie/${movieId}/date?date=${encodeURIComponent(date)}`)
 };
 
-// ===== BOOKING APIs =====
 const BookingAPI = {
-    create: (data) => apiPost('/bookings', data),
+    create: (data) => apiPost("/bookings", data),
     getById: (id) => apiGet(`/bookings/${id}`),
-    getByUser: (userId) => apiGet(`/bookings/user/${userId}`),
+    getByUser: async (userId) => unwrapPage(await apiGet("/bookings/me?size=100")),
     cancel: (id) => apiPut(`/bookings/${id}/cancel`),
-    getAvailableSeats: (showId) => apiGet(`/bookings/show/${showId}/available-seats`)
+    getAvailableSeats: (showId) => apiGet(`/shows/${showId}/available-seats`)
 };

@@ -1,42 +1,41 @@
 package com.cfs.BMS.entity;
 
-
+import com.cfs.BMS.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
-
 @Entity
 @Table(name = "users")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
-public class User {
+public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false,unique = true)
+    @Column(nullable = false, unique = true, length = 150)
     private String email;
 
-    @Column(nullable = false)
+    /** BCrypt hash - never the raw password. */
+    @Column(nullable = false, length = 100)
     private String password;
 
+    @Column(length = 20)
     private String phone;
 
-    private LocalDateTime createdAt;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "varchar(20) not null default 'USER'")
+    @Builder.Default
+    private Role role = Role.USER;
 
-    @PrePersist
-    protected void onCreate()
-    {
-        this.createdAt=LocalDateTime.now();
-    }
-
-
-
-
+    @Column(nullable = false, columnDefinition = "boolean not null default true")
+    @Builder.Default
+    private boolean active = true;
 }

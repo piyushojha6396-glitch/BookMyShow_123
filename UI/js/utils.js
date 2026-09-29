@@ -1,97 +1,88 @@
-// ===== TOAST NOTIFICATIONS =====
-function showToast(message, type = 'info') {
-    let container = document.querySelector('.toast-container');
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+    }[char]));
+}
+
+function showToast(message, type = "info") {
+    let container = document.querySelector(".toast-container");
     if (!container) {
-        container = document.createElement('div');
-        container.className = 'toast-container';
+        container = document.createElement("div");
+        container.className = "toast-container";
         document.body.appendChild(container);
     }
-    const toast = document.createElement('div');
+    const toast = document.createElement("div");
     toast.className = `toast toast-${type}`;
     toast.textContent = message;
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+    setTimeout(() => toast.remove(), 3200);
 }
 
-// ===== SESSION (simple localStorage) =====
-function setLoggedInUser(user) {
-    localStorage.setItem('bms_user', JSON.stringify(user));
+function setLoggedInUser(authResponse) {
+    const user = authResponse?.user || authResponse;
+    if (authResponse?.accessToken) localStorage.setItem("bms_token", authResponse.accessToken);
+    localStorage.setItem("bms_user", JSON.stringify(user));
     updateNavUser();
 }
 
 function getLoggedInUser() {
-    const u = localStorage.getItem('bms_user');
-    return u ? JSON.parse(u) : null;
+    try { return JSON.parse(localStorage.getItem("bms_user") || "null"); }
+    catch { localStorage.removeItem("bms_user"); return null; }
 }
 
 function logout() {
-    localStorage.removeItem('bms_user');
+    localStorage.removeItem("bms_token");
+    localStorage.removeItem("bms_user");
     updateNavUser();
-    showToast('Logged out successfully', 'success');
-    // Redirect to home if on a protected page
-    if (window.location.pathname.includes('bookings')) {
-        window.location.href = '../index.html';
+    showToast("You have been signed out", "success");
+    if (window.location.pathname.includes("bookings") || window.location.pathname.includes("admin")) {
+        setTimeout(() => { window.location.href = getBasePath() + "index.html"; }, 500);
     }
 }
 
 function updateNavUser() {
-    const navUser = document.getElementById('nav-user');
+    const navUser = document.getElementById("nav-user");
     if (!navUser) return;
     const user = getLoggedInUser();
     if (user) {
-        navUser.innerHTML = `
-            <span style="color: var(--text-muted); font-size: 0.9rem;">Hi, <strong style="color: var(--white)">${user.name}</strong></span>
-            <button class="btn btn-sm btn-outline" onclick="logout()">Logout</button>
-        `;
+        navUser.innerHTML = `<span class="nav-greeting">Hi, <strong>${escapeHtml(user.name)}</strong></span>
+            <button class="btn btn-sm btn-outline" onclick="logout()">Sign out</button>`;
     } else {
-        navUser.innerHTML = `
-            <a href="${getPagePath('pages/login.html')}" class="btn btn-sm btn-outline">Login</a>
-            <a href="${getPagePath('pages/register.html')}" class="btn btn-sm btn-primary">Sign Up</a>
-        `;
+        navUser.innerHTML = `<a href="${getPagePath("pages/login.html")}" class="btn btn-sm btn-outline">Log in</a>
+            <a href="${getPagePath("pages/register.html")}" class="btn btn-sm btn-primary">Create account</a>`;
     }
 }
 
-// Helper to resolve paths whether we're in root or pages/
 function getPagePath(path) {
-    if (window.location.pathname.includes('/pages/')) {
-        return path.replace('pages/', '').replace('../', '');
-        // we're inside pages/, so relative paths differ
-    }
-    return path;
+    return window.location.pathname.includes("/pages/") ? path.replace("pages/", "").replace("../", "") : path;
 }
 
 function getBasePath() {
-    return window.location.pathname.includes('/pages/') ? '../' : './';
+    return window.location.pathname.includes("/pages/") ? "../" : "./";
 }
 
-// ===== LOADING SPINNER =====
 function showLoading(containerId) {
-    const el = document.getElementById(containerId);
-    if (el) el.innerHTML = '<div class="loading-center"><div class="spinner"></div></div>';
+    const element = document.getElementById(containerId);
+    if (element) element.innerHTML = '<div class="loading-center"><div class="spinner"></div><span>Loading...</span></div>';
 }
 
-function showEmpty(containerId, message = 'No data found') {
-    const el = document.getElementById(containerId);
-    if (el) el.innerHTML = `<div class="empty-state"><div class="icon">🎬</div><p>${message}</p></div>`;
+function showEmpty(containerId, message = "No data found") {
+    const element = document.getElementById(containerId);
+    if (element) element.innerHTML = `<div class="empty-state"><div class="icon">◌</div><p>${escapeHtml(message)}</p></div>`;
 }
 
-// ===== MODAL HELPERS =====
 function openModal(modalId) {
-    document.getElementById(modalId)?.classList.add('active');
+    document.getElementById(modalId)?.classList.add("active");
+    document.body.classList.add("modal-open");
 }
 
 function closeModal(modalId) {
-    document.getElementById(modalId)?.classList.remove('active');
+    document.getElementById(modalId)?.classList.remove("active");
+    document.body.classList.remove("modal-open");
 }
 
-// Close modal on overlay click
-document.addEventListener('click', (e) => {
-    if (e.target.classList.contains('modal-overlay')) {
-        e.target.classList.remove('active');
-    }
+document.addEventListener("click", (event) => {
+    if (event.target.classList.contains("modal-overlay")) closeModal(event.target.id);
 });
 
-// ===== ON LOAD =====
-document.addEventListener('DOMContentLoaded', () => {
-    updateNavUser();
-});
+document.addEventListener("DOMContentLoaded", updateNavUser);

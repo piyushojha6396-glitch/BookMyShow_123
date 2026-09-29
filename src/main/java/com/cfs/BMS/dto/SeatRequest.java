@@ -1,21 +1,11 @@
 package com.cfs.BMS.dto;
 
-
 import com.cfs.BMS.enums.SeatType;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.validation.constraints.*;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class SeatRequest {
-
-    private String seatNumber;
-    private String row;
-    private Integer col;
-    private SeatType seatType;
-    private Long screenId;
+public record SeatRequest(
+        @NotBlank @Pattern(regexp = "^[A-Za-z]{1,2}$", message = "must be 1-2 letters") String row,
+        @NotNull @Min(1) @Max(99) Integer col,
+        @NotNull SeatType seatType,
+        @NotNull Long screenId) {
 }

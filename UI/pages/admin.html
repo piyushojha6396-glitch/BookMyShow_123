@@ -113,8 +113,12 @@
                     <input type="text" id="screen-name" placeholder="Screen 1">
                 </div>
                 <div class="form-group" style="flex:1;min-width:100px;margin:0;">
-                    <label>Total Seats</label>
-                    <input type="number" id="screen-seats" placeholder="100">
+                    <label>Rows</label>
+                    <input type="number" id="screen-rows" placeholder="5" min="1" max="26">
+                </div>
+                <div class="form-group" style="flex:1;min-width:100px;margin:0;">
+                    <label>Seats / Row</label>
+                    <input type="number" id="screen-seats-per-row" placeholder="10" min="1" max="50">
                 </div>
                 <div class="form-group" style="flex:1;min-width:150px;margin:0;">
                     <label>Theater</label>
@@ -194,6 +198,18 @@
     <script src="../js/api.js"></script>
     <script src="../js/utils.js"></script>
     <script>
+        const adminUser = getLoggedInUser();
+        if (!adminUser || adminUser.role !== 'ADMIN') {
+            document.querySelector('.container').innerHTML = `
+                <div class="empty-state" style="margin-top:4rem;">
+                    <div class="icon">🔒</div>
+                    <h2>Administrator access required</h2>
+                    <p style="margin: .5rem 0 1.25rem;">Sign in with an administrator account to manage the catalogue.</p>
+                    <a class="btn btn-primary" href="login.html">Go to login</a>
+                </div>`;
+            throw new Error('Admin access required');
+        }
+
         // ===== TAB SWITCHING =====
         function switchTab(tab, el) {
             document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
@@ -289,14 +305,14 @@
             try {
                 const theaters = await TheaterAPI.getAll();
                 let html = '<table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Address</th><th>City</th></tr></thead><tbody>';
-                theaters.forEach(t => html += `<tr><td>${t.id}</td><td>${t.name}</td><td>${t.address || ''}</td><td>${t.city?.name || ''}</td></tr>`);
+                theaters.forEach(t => html += `<tr><td>${t.id}</td><td>${t.name}</td><td>${t.address || ''}</td><td>${t.cityName || ''}</td></tr>`);
                 html += '</tbody></table>';
                 document.getElementById('theaters-table').innerHTML = theaters.length ? html : '<div class="empty-state"><p>No theaters added yet</p></div>';
 
                 // dropdown for screens
                 const screenTheater = document.getElementById('screen-theater');
                 if (screenTheater) {
-                    screenTheater.innerHTML = '<option value="">Select Theater</option>' + theaters.map(t => `<option value="${t.id}">${t.name} (${t.city?.name || ''})</option>`).join('');
+                    screenTheater.innerHTML = '<option value="">Select Theater</option>' + theaters.map(t => `<option value="${t.id}">${t.name} (${t.cityName || ''})</option>`).join('');
                 }
             } catch (e) { console.log('Error loading theaters'); }
         }
@@ -322,12 +338,12 @@
             try {
                 const screens = await ScreenAPI.getAll();
                 let html = '<table class="data-table"><thead><tr><th>ID</th><th>Name</th><th>Seats</th><th>Theater</th></tr></thead><tbody>';
-                screens.forEach(s => html += `<tr><td>${s.id}</td><td>${s.name}</td><td>${s.totalSeats || ''}</td><td>${s.theater?.name || ''}</td></tr>`);
+                screens.forEach(s => html += `<tr><td>${s.id}</td><td>${s.name}</td><td>${s.totalSeats || ''}</td><td>${s.theaterName || ''}</td></tr>`);
                 html += '</tbody></table>';
                 document.getElementById('screens-table').innerHTML = screens.length ? html : '<div class="empty-state"><p>No screens added yet</p></div>';
 
                 // dropdowns
-                const opts = '<option value="">Select Screen</option>' + screens.map(s => `<option value="${s.id}">${s.name} — ${s.theater?.name || ''}</option>`).join('');
+                const opts = '<option value="">Select Screen</option>' + screens.map(s => `<option value="${s.id}">${s.name} — ${s.theaterName || ''}</option>`).join('');
                 ['seat-screen', 'show-screen'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) el.innerHTML = opts;
@@ -338,15 +354,21 @@
         async function addScreen() {
             const data = {
                 name: document.getElementById('screen-name').value.trim(),
-                totalSeats: parseInt(document.getElementById('screen-seats').value) || null,
+                rows: parseInt(document.getElementById('screen-rows').value),
+                seatsPerRow: parseInt(document.getElementById('screen-seats-per-row').value),
+                premiumRows: 1,
+                vipRows: 1,
                 theaterId: parseInt(document.getElementById('screen-theater').value)
             };
-            if (!data.name || !data.theaterId) { showToast('Fill screen name and theater', 'error'); return; }
+            if (!data.name || !data.theaterId || !data.rows || !data.seatsPerRow) {
+                showToast('Fill screen name, theater, rows and seats per row', 'error'); return;
+            }
             try {
                 await ScreenAPI.add(data);
                 showToast('Screen added!', 'success');
                 document.getElementById('screen-name').value = '';
-                document.getElementById('screen-seats').value = '';
+                document.getElementById('screen-rows').value = '';
+                document.getElementById('screen-seats-per-row').value = '';
                 loadScreens();
             } catch (e) { showToast(e.message, 'error'); }
         }
@@ -394,7 +416,7 @@
             try {
                 const shows = await ShowAPI.getAll();
                 let html = '<table class="data-table"><thead><tr><th>ID</th><th>Movie</th><th>Screen</th><th>Date</th><th>Time</th><th>Price</th></tr></thead><tbody>';
-                shows.forEach(s => html += `<tr><td>${s.id}</td><td>${s.movie?.title || ''}</td><td>${s.screen?.name || ''} (${s.screen?.theater?.name || ''})</td><td>${s.showDate}</td><td>${s.startTime}-${s.endTime || ''}</td><td>₹${s.ticketPrice || 0}</td></tr>`);
+                shows.forEach(s => html += `<tr><td>${s.id}</td><td>${s.movieTitle || ''}</td><td>${s.screenName || ''} (${s.theaterName || ''})</td><td>${s.showDate}</td><td>${s.startTime}-${s.endTime || ''}</td><td>₹${s.ticketPrice || 0}</td></tr>`);
                 html += '</tbody></table>';
                 document.getElementById('shows-table').innerHTML = shows.length ? html : '<div class="empty-state"><p>No shows added yet</p></div>';
             } catch (e) { console.log('Error loading shows'); }

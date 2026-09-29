@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Bookings - BookMyShow</title>
+    <title>My Bookings | BookMyShow</title>
     <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
@@ -50,9 +50,9 @@
                     <div class="card" style="border: ${b.status === 'CANCELLED' ? '1px solid rgba(233,69,96,0.3)' : '1px solid rgba(46,204,113,0.3)'};">
                         <div class="card-body" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
                             <div>
-                                <h3 style="margin-bottom:0.3rem;">🎬 ${b.show?.movie?.title || 'Movie'}</h3>
+                                <h3 style="margin-bottom:0.3rem;">🎬 ${b.show?.movieTitle || 'Movie'}</h3>
                                 <p style="color:var(--text-muted); font-size:0.85rem;">
-                                    🏛️ ${b.show?.screen?.theater?.name || ''} — ${b.show?.screen?.name || ''}<br>
+                                    🏛️ ${b.show?.theaterName || ''} — ${b.show?.screenName || ''}<br>
                                     📅 ${b.show?.showDate || ''} &nbsp; 🕐 ${b.show?.startTime || ''}<br>
                                     💺 Seats: ${b.seats ? b.seats.map(s => s.seatNumber).join(', ') : 'N/A'}<br>
                                     🕑 Booked: ${b.bookedAt ? new Date(b.bookedAt).toLocaleString() : ''}
